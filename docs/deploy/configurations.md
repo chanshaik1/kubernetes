@@ -64,23 +64,23 @@ Currently, you can set only 1 namespace to watch in this flag. See [this Kuberne
 !!!warning ""
     The --cluster-name flag is mandatory and the value must match the name of the kubernetes cluster. If you specify an incorrect name, the subnet auto-discovery will not work.
 
-|Flag                                   | Type                            | Default         | Description |
-|---------------------------------------|---------------------------------|-----------------|-------------|
-|aws-api-endpoints                      | AWS API Endpoints Config        |                 | AWS API endpoints mapping, format: serviceID1=URL1,serviceID2=URL2 |
-|aws-api-throttle                       | AWS Throttle Config             | [default value](#default-throttle-config ) | throttle settings for AWS APIs, format: serviceID1:operationRegex1=rate:burst,serviceID2:operationRegex2=rate:burst |
-|aws-max-retries                        | int                             | 10              | Maximum retries for AWS APIs |
-|aws-region                             | string                          | [instance metadata](#instance-metadata)    | AWS Region for the kubernetes cluster |
-|aws-vpc-id                             | string                          | [instance metadata](#instance-metadata)    | AWS VPC ID for the Kubernetes cluster |
-|backend-security-group                 | string                          |                 | Backend security group id to use for the ingress rules on the worker node SG|
-|cluster-name                           | string                          |                 | Kubernetes cluster name|
-|default-ssl-policy                     | string                          | ELBSecurityPolicy-2016-08 | Default SSL Policy that will be applied to all Ingresses or Services that do not have the SSL Policy annotation |
-|default-tags                           | stringMap                       |                 | AWS Tags that will be applied to all AWS resources managed by this controller. Specified Tags takes highest priority |
-|default-target-type                    | string                          | instance        | Default target type for Ingresses and Services - ip, instance |
-|[disable-ingress-class-annotation](#disable-ingress-class-annotation)       | boolean                         | false           | Disable new usage of the `kubernetes.io/ingress.class` annotation |
-|[disable-ingress-group-name-annotation](#disable-ingress-group-name-annotation)  | boolean                         | false           | Disallow new use of the `alb.ingress.kubernetes.io/group.name` annotation |
-|disable-restricted-sg-rules            | boolean                         | false            | Disable the usage of restricted security group rules |
-|enable-backend-security-group          | boolean                         | true            | Enable sharing of security groups for backend traffic |
-|enable-endpoint-slices                 | boolean                         | false           | Use EndpointSlices instead of Endpoints for pod endpoint and TargetGroupBinding resolution for load balancers with IP targets. |
+|Flag                                   | Type                            | Default         | Description                                                                                                                            |
+|---------------------------------------|---------------------------------|-----------------|----------------------------------------------------------------------------------------------------------------------------------------|
+|aws-api-endpoints                      | AWS API Endpoints Config        |                 | AWS API endpoints mapping, format: serviceID1=URL1,serviceID2=URL2                                                                     |
+|aws-api-throttle                       | AWS Throttle Config             | [default value](#default-throttle-config ) | throttle settings for AWS APIs, format: serviceID1:operationRegex1=rate:burst,serviceID2:operationRegex2=rate:burst                    |
+|aws-max-retries                        | int                             | 10              | Maximum retries for AWS APIs                                                                                                           |
+|aws-region                             | string                          | [instance metadata](#instance-metadata)    | AWS Region for the kubernetes cluster                                                                                                  |
+|aws-vpc-id                             | string                          | [instance metadata](#instance-metadata)    | AWS VPC ID for the Kubernetes cluster                                                                                                  |
+|backend-security-group                 | string                          |                 | Backend security group id to use for the ingress rules on the worker node SG                                                           |
+|cluster-name                           | string                          |                 | Kubernetes cluster name                                                                                                                |
+|default-ssl-policy                     | string                          | ELBSecurityPolicy-2016-08 | Default SSL Policy that will be applied to all Ingresses or Services that do not have the SSL Policy annotation                        |
+|default-tags                           | stringMap                       |                 | AWS Tags that will be applied to all AWS resources managed by this controller. Specified Tags takes highest priority                   |
+|default-target-type                    | string                          | instance        | Default target type for Ingresses and Services - ip, instance                                                                          |
+|[disable-ingress-class-annotation](#disable-ingress-class-annotation)       | boolean                         | false           | Disable new usage of the `kubernetes.io/ingress.class` annotation                                                                      |
+|[disable-ingress-group-name-annotation](#disable-ingress-group-name-annotation)  | boolean                         | false           | Disallow new use of the `alb.ingress.kubernetes.io/group.name` annotation                                                              |
+|disable-restricted-sg-rules            | boolean                         | false            | Disable the usage of restricted security group rules                                                                                   |
+|enable-backend-security-group          | boolean                         | true            | Enable sharing of security groups for backend traffic                                                                                  |
+|enable-endpoint-slices                 | boolean                         | false           | Use EndpointSlices instead of Endpoints for pod endpoint and TargetGroupBinding resolution for load balancers with IP targets.         |
 |enable-leader-election                 | boolean                         | true            | Enable leader election for the load balancer controller manager. Enabling this will ensure there is only one active controller manager |
 |enable-pod-readiness-gate-inject       | boolean                         | true            | If enabled, targetHealth readiness gate will get injected to the pod spec for the matching endpoint pods |
 |enable-shield                          | boolean                         | true            | Enable Shield addon for ALB |
@@ -127,15 +127,6 @@ Once disabled:
 * you can no longer create Ingresses with the `alb.ingress.kubernetes.io/group.name` annotation.
 * you can no longer alter the value of an `alb.ingress.kubernetes.io/group.name` annotation on an existing Ingress.
 
-### sync-period
-`--sync-period` defines a fixed interval for the controller to reconcile all resources even if there is no change, default to 10 hr. Please be mindful that frequent reconciliations may incur unnecessary AWS API usage.
-
-As best practice, we do not recommend users to manually modify the resources managed by the controller. And users should not depend on the controller auto-reconciliation to revert the manual modification, or to mitigate any security risks.
-
-### waf-addons
-By default, the controller assumes sole ownership of the WAF addons associated to the provisioned ALBs, via the flag `--enable-waf` and `--enable-wafv2`.
-And the users should disable them accordingly if they want a third party like AWS Firewall Manager to associate or remove the WAF-ACL of the ALBs.
-Once disabled, the controller shall not take any actions on the waf addons of the provisioned ALBs.
 
 ###  throttle config
 
