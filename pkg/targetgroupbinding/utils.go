@@ -31,12 +31,12 @@ func GetAssumeRoleAndExternalIdFromAnnotations(annotations map[string]string) (s
 	externalId := ""
 
 	for key, value := range annotations {
-		switch key {
-		case AnnotationIamRoleArnToImpersonate:
+		if key == AnnotationIamRoleArnToImpersonate {
 			iamRoleArnToImpersonate = value
-		case AnnotationAssumeRoleExternalId:
-			externalId = value
-		default:
+		} else {
+			if key == AnnotationAssumeRoleExternalId {
+				externalId = value
+			}
 		}
 	}
 
