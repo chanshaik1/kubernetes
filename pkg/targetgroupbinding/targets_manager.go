@@ -88,7 +88,7 @@ func (m *cachedTargetsManager) RegisterTargets(ctx context.Context, tgb *elbv2ap
 		m.logger.Info("registering targets",
 			"arn", tgARN,
 			"targets", targetsChunk)
-		_, err := m.elbv2Client.RegisterTargetsWithContext(ctx, req)
+		_, err := m.elbv2Client.AssumeRole(GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)).RegisterTargetsWithContext(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -110,7 +110,7 @@ func (m *cachedTargetsManager) DeregisterTargets(ctx context.Context, tgb *elbv2
 		m.logger.Info("deRegistering targets",
 			"arn", tgARN,
 			"targets", targetsChunk)
-		_, err := m.elbv2Client.DeregisterTargetsWithContext(ctx, req)
+		_, err := m.elbv2Client.AssumeRole(GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)).DeregisterTargetsWithContext(ctx, req)
 		if err != nil {
 			return err
 		}
@@ -130,7 +130,7 @@ func (m *cachedTargetsManager) ListTargets(ctx context.Context, tgb *elbv2api.Ta
 		targetsCacheItem := rawTargetsCacheItem.(*targetsCacheItem)
 		targetsCacheItem.mutex.Lock()
 		defer targetsCacheItem.mutex.Unlock()
-		refreshedTargets, err := m.refreshUnhealthyTargets(ctx, tgARN, targetsCacheItem.targets)
+		refreshedTargets, err := m.refreshUnhealthyTargets(ctx, tgb, targetsCacheItem.targets)
 		if err != nil {
 			return nil, err
 		}
@@ -138,7 +138,7 @@ func (m *cachedTargetsManager) ListTargets(ctx context.Context, tgb *elbv2api.Ta
 		return cloneTargetInfoSlice(refreshedTargets), nil
 	}
 
-	refreshedTargets, err := m.refreshAllTargets(ctx, tgARN)
+	refreshedTargets, err := m.refreshAllTargets(ctx, tgb)
 	if err != nil {
 		return nil, err
 	}
@@ -151,8 +151,8 @@ func (m *cachedTargetsManager) ListTargets(ctx context.Context, tgb *elbv2api.Ta
 }
 
 // refreshAllTargets will refresh all targets for targetGroup.
-func (m *cachedTargetsManager) refreshAllTargets(ctx context.Context, tgARN string) ([]TargetInfo, error) {
-	targets, err := m.listTargetsFromAWS(ctx, tgARN, nil)
+func (m *cachedTargetsManager) refreshAllTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding) ([]TargetInfo, error) {
+	targets, err := m.listTargetsFromAWS(ctx, tgb, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ func (m *cachedTargetsManager) refreshAllTargets(ctx context.Context, tgARN stri
 // refreshUnhealthyTargets will refresh targets that are not in healthy status for targetGroup.
 // To save API calls, we don't refresh targets that are already healthy since once a target turns healthy, we'll unblock it's readinessProbe.
 // we can do nothing from controller perspective when a healthy target becomes unhealthy.
-func (m *cachedTargetsManager) refreshUnhealthyTargets(ctx context.Context, tgARN string, cachedTargets []TargetInfo) ([]TargetInfo, error) {
+func (m *cachedTargetsManager) refreshUnhealthyTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding, cachedTargets []TargetInfo) ([]TargetInfo, error) {
 	var refreshedTargets []TargetInfo
 	var unhealthyTargets []elbv2sdk.TargetDescription
 	for _, cachedTarget := range cachedTargets {
@@ -176,7 +176,7 @@ func (m *cachedTargetsManager) refreshUnhealthyTargets(ctx context.Context, tgAR
 		return refreshedTargets, nil
 	}
 
-	refreshedUnhealthyTargets, err := m.listTargetsFromAWS(ctx, tgARN, unhealthyTargets)
+	refreshedUnhealthyTargets, err := m.listTargetsFromAWS(ctx, tgb, unhealthyTargets)
 	if err != nil {
 		return nil, err
 	}
@@ -192,12 +192,13 @@ func (m *cachedTargetsManager) refreshUnhealthyTargets(ctx context.Context, tgAR
 // listTargetsFromAWS will list targets for TargetGroup using ELBV2API.
 // if specified targets is non-empty, only these targets will be listed.
 // otherwise, all targets for targetGroup will be listed.
-func (m *cachedTargetsManager) listTargetsFromAWS(ctx context.Context, tgARN string, targets []elbv2sdk.TargetDescription) ([]TargetInfo, error) {
+func (m *cachedTargetsManager) listTargetsFromAWS(ctx context.Context, tgb *elbv2api.TargetGroupBinding, targets []elbv2sdk.TargetDescription) ([]TargetInfo, error) {
+	tgARN := tgb.Spec.TargetGroupARN
 	req := &elbv2sdk.DescribeTargetHealthInput{
 		TargetGroupArn: aws.String(tgARN),
 		Targets:        pointerizeTargetDescriptions(targets),
 	}
-	resp, err := m.elbv2Client.DescribeTargetHealthWithContext(ctx, req)
+	resp, err := m.elbv2Client.AssumeRole(GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)).DescribeTargetHealthWithContext(ctx, req)
 	if err != nil {
 		return nil, err
 	}
