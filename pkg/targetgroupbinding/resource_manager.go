@@ -126,9 +126,7 @@ func (m *defaultResourceManager) reconcileWithIPTargetType(ctx context.Context, 
 		return err
 	}
 
-	tgARN := tgb.Spec.TargetGroupARN
-	vpcID := tgb.Spec.VpcID
-	targets, err := m.targetsManager.ListTargets(ctx, tgARN)
+	targets, err := m.targetsManager.ListTargets(ctx, tgb)
 	if err != nil {
 		return err
 	}
@@ -141,12 +139,12 @@ func (m *defaultResourceManager) reconcileWithIPTargetType(ctx context.Context, 
 		needNetworkingRequeue = true
 	}
 	if len(unmatchedTargets) > 0 {
-		if err := m.deregisterTargets(ctx, tgARN, unmatchedTargets); err != nil {
+		if err := m.deregisterTargets(ctx, tgb, unmatchedTargets); err != nil {
 			return err
 		}
 	}
 	if len(unmatchedEndpoints) > 0 {
-		if err := m.registerPodEndpoints(ctx, tgARN, vpcID, unmatchedEndpoints); err != nil {
+		if err := m.registerPodEndpoints(ctx, tgb, unmatchedEndpoints); err != nil {
 			return err
 		}
 	}
@@ -191,8 +189,7 @@ func (m *defaultResourceManager) reconcileWithInstanceTargetType(ctx context.Con
 		}
 		return err
 	}
-	tgARN := tgb.Spec.TargetGroupARN
-	targets, err := m.targetsManager.ListTargets(ctx, tgARN)
+	targets, err := m.targetsManager.ListTargets(ctx, tgb)
 	if err != nil {
 		return err
 	}
@@ -203,12 +200,12 @@ func (m *defaultResourceManager) reconcileWithInstanceTargetType(ctx context.Con
 		return err
 	}
 	if len(unmatchedTargets) > 0 {
-		if err := m.deregisterTargets(ctx, tgARN, unmatchedTargets); err != nil {
+		if err := m.deregisterTargets(ctx, tgb, unmatchedTargets); err != nil {
 			return err
 		}
 	}
 	if len(unmatchedEndpoints) > 0 {
-		if err := m.registerNodePortEndpoints(ctx, tgARN, unmatchedEndpoints); err != nil {
+		if err := m.registerNodePortEndpoints(ctx, tgb, unmatchedEndpoints); err != nil {
 			return err
 		}
 	}
@@ -217,7 +214,7 @@ func (m *defaultResourceManager) reconcileWithInstanceTargetType(ctx context.Con
 }
 
 func (m *defaultResourceManager) cleanupTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding) error {
-	targets, err := m.targetsManager.ListTargets(ctx, tgb.Spec.TargetGroupARN)
+	targets, err := m.targetsManager.ListTargets(ctx, tgb)
 	if err != nil {
 		if isELBV2TargetGroupNotFoundError(err) {
 			return nil
@@ -226,7 +223,7 @@ func (m *defaultResourceManager) cleanupTargets(ctx context.Context, tgb *elbv2a
 		}
 		return err
 	}
-	if err := m.deregisterTargets(ctx, tgb.Spec.TargetGroupARN, targets); err != nil {
+	if err := m.deregisterTargets(ctx, tgb, targets); err != nil {
 		if isELBV2TargetGroupNotFoundError(err) {
 			return nil
 		} else if isELBV2TargetGroupARNInvalidError(err) {
@@ -375,20 +372,20 @@ func (m *defaultResourceManager) updatePodAsHealthyForDeletedTGB(ctx context.Con
 	return nil
 }
 
-func (m *defaultResourceManager) deregisterTargets(ctx context.Context, tgARN string, targets []TargetInfo) error {
+func (m *defaultResourceManager) deregisterTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding, targets []TargetInfo) error {
 	sdkTargets := make([]elbv2sdk.TargetDescription, 0, len(targets))
 	for _, target := range targets {
 		sdkTargets = append(sdkTargets, target.Target)
 	}
-	return m.targetsManager.DeregisterTargets(ctx, tgARN, sdkTargets)
+	return m.targetsManager.DeregisterTargets(ctx, tgb, sdkTargets)
 }
 
-func (m *defaultResourceManager) registerPodEndpoints(ctx context.Context, tgARN, tgVpcID string, endpoints []backend.PodEndpoint) error {
+func (m *defaultResourceManager) registerPodEndpoints(ctx context.Context, tgb *elbv2api.TargetGroupBinding, endpoints []backend.PodEndpoint) error {
 	vpcID := m.vpcID
 	// Target group is in a different VPC from the cluster's VPC
-	if tgVpcID != "" && tgVpcID != m.vpcID {
-		vpcID = tgVpcID
-		m.logger.Info("registering endpoints using the targetGroup's vpcID", tgVpcID,
+	if tgb.Spec.VpcID != "" && tgb.Spec.VpcID != m.vpcID {
+		vpcID = tgb.Spec.VpcID
+		m.logger.Info("registering endpoints using the targetGroup's vpcID", tgb.Spec.VpcID,
 			"which is different from the cluster's vpcID", m.vpcID)
 	}
 	vpcInfo, err := m.vpcInfoProvider.FetchVPCInfo(ctx, vpcID)
@@ -418,10 +415,10 @@ func (m *defaultResourceManager) registerPodEndpoints(ctx context.Context, tgARN
 		}
 		sdkTargets = append(sdkTargets, target)
 	}
-	return m.targetsManager.RegisterTargets(ctx, tgARN, sdkTargets)
+	return m.targetsManager.RegisterTargets(ctx, tgb, sdkTargets)
 }
 
-func (m *defaultResourceManager) registerNodePortEndpoints(ctx context.Context, tgARN string, endpoints []backend.NodePortEndpoint) error {
+func (m *defaultResourceManager) registerNodePortEndpoints(ctx context.Context, tgb *elbv2api.TargetGroupBinding, endpoints []backend.NodePortEndpoint) error {
 	sdkTargets := make([]elbv2sdk.TargetDescription, 0, len(endpoints))
 	for _, endpoint := range endpoints {
 		sdkTargets = append(sdkTargets, elbv2sdk.TargetDescription{
@@ -429,7 +426,7 @@ func (m *defaultResourceManager) registerNodePortEndpoints(ctx context.Context, 
 			Port: awssdk.Int64(endpoint.Port),
 		})
 	}
-	return m.targetsManager.RegisterTargets(ctx, tgARN, sdkTargets)
+	return m.targetsManager.RegisterTargets(ctx, tgb, sdkTargets)
 }
 
 type podEndpointAndTargetPair struct {

@@ -2,13 +2,15 @@ package targetgroupbinding
 
 import (
 	"context"
+	"sync"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	elbv2sdk "github.com/aws/aws-sdk-go/service/elbv2"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/util/cache"
+	elbv2api "sigs.k8s.io/aws-load-balancer-controller/apis/elbv2/v1beta1"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/aws/services"
-	"sync"
-	"time"
 )
 
 const (
@@ -20,13 +22,13 @@ const (
 // TargetsManager is an abstraction around ELBV2's targets API.
 type TargetsManager interface {
 	// Register Targets into TargetGroup.
-	RegisterTargets(ctx context.Context, tgARN string, targets []elbv2sdk.TargetDescription) error
+	RegisterTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding, targets []elbv2sdk.TargetDescription) error
 
 	// Deregister Targets from TargetGroup.
-	DeregisterTargets(ctx context.Context, tgARN string, targets []elbv2sdk.TargetDescription) error
+	DeregisterTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding, targets []elbv2sdk.TargetDescription) error
 
 	// List Targets from TargetGroup.
-	ListTargets(ctx context.Context, tgARN string) ([]TargetInfo, error)
+	ListTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding) ([]TargetInfo, error)
 }
 
 // NewCachedTargetsManager constructs new cachedTargetsManager
@@ -75,7 +77,8 @@ type targetsCacheItem struct {
 	targets []TargetInfo
 }
 
-func (m *cachedTargetsManager) RegisterTargets(ctx context.Context, tgARN string, targets []elbv2sdk.TargetDescription) error {
+func (m *cachedTargetsManager) RegisterTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding, targets []elbv2sdk.TargetDescription) error {
+	tgARN := tgb.Spec.TargetGroupARN
 	targetsChunks := chunkTargetDescriptions(targets, m.registerTargetsChunkSize)
 	for _, targetsChunk := range targetsChunks {
 		req := &elbv2sdk.RegisterTargetsInput{
@@ -96,7 +99,8 @@ func (m *cachedTargetsManager) RegisterTargets(ctx context.Context, tgARN string
 	return nil
 }
 
-func (m *cachedTargetsManager) DeregisterTargets(ctx context.Context, tgARN string, targets []elbv2sdk.TargetDescription) error {
+func (m *cachedTargetsManager) DeregisterTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding, targets []elbv2sdk.TargetDescription) error {
+	tgARN := tgb.Spec.TargetGroupARN
 	targetsChunks := chunkTargetDescriptions(targets, m.deregisterTargetsChunkSize)
 	for _, targetsChunk := range targetsChunks {
 		req := &elbv2sdk.DeregisterTargetsInput{
@@ -117,7 +121,8 @@ func (m *cachedTargetsManager) DeregisterTargets(ctx context.Context, tgARN stri
 	return nil
 }
 
-func (m *cachedTargetsManager) ListTargets(ctx context.Context, tgARN string) ([]TargetInfo, error) {
+func (m *cachedTargetsManager) ListTargets(ctx context.Context, tgb *elbv2api.TargetGroupBinding) ([]TargetInfo, error) {
+	tgARN := tgb.Spec.TargetGroupARN
 	m.targetsCacheMutex.Lock()
 	defer m.targetsCacheMutex.Unlock()
 
