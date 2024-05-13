@@ -152,7 +152,7 @@ func (v *targetGroupBindingValidator) checkNodeSelector(tgb *elbv2api.TargetGrou
 
 // checkTargetGroupIPAddressType ensures IP address type matches with that on the AWS target group
 func (v *targetGroupBindingValidator) checkTargetGroupIPAddressType(ctx context.Context, tgb *elbv2api.TargetGroupBinding) error {
-	targetGroupIPAddressType, err := v.getTargetGroupIPAddressTypeFromAWS(ctx, tgb.Spec.TargetGroupARN)
+	targetGroupIPAddressType, err := v.getTargetGroupIPAddressTypeFromAWS(ctx, tgb)
 	if err != nil {
 		return errors.Wrap(err, "unable to get target group IP address type")
 	}
@@ -171,7 +171,7 @@ func (v *targetGroupBindingValidator) checkTargetGroupVpcID(ctx context.Context,
 	if !vpcIDPatternRegex.MatchString(tgb.Spec.VpcID) {
 		return errors.Errorf("ValidationError: vpcID %v failed to satisfy constraint: VPC Id must begin with 'vpc-' followed by 8 or 17 lowercase letters (a-f) or numbers.", tgb.Spec.VpcID)
 	}
-	vpcID, err := v.getVpcIDFromAWS(ctx, tgb.Spec.TargetGroupARN)
+	vpcID, err := v.getVpcIDFromAWS(ctx, tgb)
 	if err != nil {
 		return errors.Wrap(err, "unable to get target group VpcID")
 	}
@@ -182,8 +182,8 @@ func (v *targetGroupBindingValidator) checkTargetGroupVpcID(ctx context.Context,
 }
 
 // getTargetGroupIPAddressTypeFromAWS returns the target group IP address type of AWS target group
-func (v *targetGroupBindingValidator) getTargetGroupIPAddressTypeFromAWS(ctx context.Context, tgARN string) (elbv2api.TargetGroupIPAddressType, error) {
-	targetGroup, err := v.getTargetGroupFromAWS(ctx, tgARN)
+func (v *targetGroupBindingValidator) getTargetGroupIPAddressTypeFromAWS(ctx context.Context, tgb *elbv2api.TargetGroupBinding) (elbv2api.TargetGroupIPAddressType, error) {
+	targetGroup, err := v.getTargetGroupFromAWS(ctx, tgb)
 	if err != nil {
 		return "", err
 	}
@@ -200,7 +200,8 @@ func (v *targetGroupBindingValidator) getTargetGroupIPAddressTypeFromAWS(ctx con
 }
 
 // getTargetGroupFromAWS returns the AWS target group corresponding to the ARN
-func (v *targetGroupBindingValidator) getTargetGroupFromAWS(ctx context.Context, tgARN string) (*elbv2sdk.TargetGroup, error) {
+func (v *targetGroupBindingValidator) getTargetGroupFromAWS(ctx context.Context, tgb *elbv2api.TargetGroupBinding) (*elbv2sdk.TargetGroup, error) {
+	tgARN := tgb.Spec.TargetGroupARN
 	req := &elbv2sdk.DescribeTargetGroupsInput{
 		TargetGroupArns: awssdk.StringSlice([]string{tgARN}),
 	}
@@ -214,8 +215,8 @@ func (v *targetGroupBindingValidator) getTargetGroupFromAWS(ctx context.Context,
 	return tgList[0], nil
 }
 
-func (v *targetGroupBindingValidator) getVpcIDFromAWS(ctx context.Context, tgARN string) (string, error) {
-	targetGroup, err := v.getTargetGroupFromAWS(ctx, tgARN)
+func (v *targetGroupBindingValidator) getVpcIDFromAWS(ctx context.Context, tgb *elbv2api.TargetGroupBinding) (string, error) {
+	targetGroup, err := v.getTargetGroupFromAWS(ctx, tgb)
 	if err != nil {
 		return "", err
 	}
