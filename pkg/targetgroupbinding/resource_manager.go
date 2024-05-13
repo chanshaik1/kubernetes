@@ -388,9 +388,9 @@ func (m *defaultResourceManager) registerPodEndpoints(ctx context.Context, tgb *
 		m.logger.Info(fmt.Sprintf(
 			"registering endpoints using the targetGroup's vpcID %s which is different from the cluster's vpcID %s", tgb.Spec.VpcID, m.vpcID))
 
-		needsToImpersonateRole, _ := GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)
-		if len(needsToImpersonateRole) != 0 {
-			// since we need to impersonate an ARN for this TGB,
+		needsToAssumeRole, _ := GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)
+		if len(needsToAssumeRole) != 0 {
+			// since we need to assume a role for this TGB,
 			// it is from a different account
 			// so the packets will need to leave the VPC and therefore
 			// target.AvailabilityZone = awssdk.String("all") must be set

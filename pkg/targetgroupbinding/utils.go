@@ -19,7 +19,7 @@ const (
 	IndexKeyServiceRefName = "spec.serviceRef.name"
 
 	// Annotation for IAM Role ARN to assume when calling AWS APIs.
-	AnnotationIamRoleArnToImpersonate = "IamRoleArnToImpersonate"
+	AnnotationIamRoleArnToAssume = "IamRoleArnToAssume"
 
 	// Annotation for IAM Role External ID to use when calling AWS APIs.
 	AnnotationAssumeRoleExternalId = "AssumeRoleExternalId"
@@ -27,12 +27,12 @@ const (
 
 func GetAssumeRoleAndExternalIdFromAnnotations(annotations map[string]string) (string, string) {
 
-	iamRoleArnToImpersonate := ""
+	iamRoleArnToAssume := ""
 	externalId := ""
 
 	for key, value := range annotations {
-		if key == AnnotationIamRoleArnToImpersonate {
-			iamRoleArnToImpersonate = value
+		if key == AnnotationIamRoleArnToAssume {
+			iamRoleArnToAssume = value
 		} else {
 			if key == AnnotationAssumeRoleExternalId {
 				externalId = value
@@ -40,7 +40,7 @@ func GetAssumeRoleAndExternalIdFromAnnotations(annotations map[string]string) (s
 		}
 	}
 
-	return iamRoleArnToImpersonate, externalId
+	return iamRoleArnToAssume, externalId
 }
 
 // BuildTargetHealthPodConditionType constructs the condition type for TargetHealth pod condition.
