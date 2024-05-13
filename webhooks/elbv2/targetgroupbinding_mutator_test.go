@@ -258,6 +258,7 @@ func Test_targetGroupBindingMutator_MutateCreate(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetGroupsAsListCalls {
 				elbv2Client.EXPECT().DescribeTargetGroupsAsList(gomock.Any(), call.req).Return(call.resp, call.err).AnyTimes()
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client).AnyTimes()
 			}
 
 			m := &targetGroupBindingMutator{
@@ -362,6 +363,7 @@ func Test_targetGroupBindingMutator_obtainSDKTargetTypeFromAWS(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetGroupsAsListCalls {
 				elbv2Client.EXPECT().DescribeTargetGroupsAsList(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client).AnyTimes()
 			}
 
 			m := &targetGroupBindingMutator{
@@ -489,6 +491,7 @@ func Test_targetGroupBindingMutator_getIPAddressTypeFromAWS(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetGroupsAsListCalls {
 				elbv2Client.EXPECT().DescribeTargetGroupsAsList(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client).AnyTimes()
 			}
 
 			m := &targetGroupBindingMutator{
@@ -572,6 +575,7 @@ func Test_targetGroupBindingMutator_obtainSDKVpcIDFromAWS(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetGroupsAsListCalls {
 				elbv2Client.EXPECT().DescribeTargetGroupsAsList(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client).AnyTimes()
 			}
 
 			m := &targetGroupBindingMutator{

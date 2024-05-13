@@ -277,6 +277,7 @@ func Test_cachedTargetsManager_RegisterTargets(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.registerTargetsWithContextCalls {
 				elbv2Client.EXPECT().RegisterTargetsWithContext(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client)
 			}
 
 			targetsCache := cache.NewExpiring()
@@ -522,6 +523,7 @@ func Test_cachedTargetsManager_DeregisterTargets(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.deregisterTargetsWithContextCalls {
 				elbv2Client.EXPECT().DeregisterTargetsWithContext(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client)
 			}
 
 			targetsCache := cache.NewExpiring()
@@ -787,6 +789,7 @@ func Test_cachedTargetsManager_ListTargets(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetHealthWithContextCalls {
 				elbv2Client.EXPECT().DescribeTargetHealthWithContext(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client)
 			}
 			targetsCache := cache.NewExpiring()
 			targetsCacheTTL := 1 * time.Minute
@@ -1197,6 +1200,7 @@ func Test_cachedTargetsManager_refreshUnhealthyTargets(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetHealthWithContextCalls {
 				elbv2Client.EXPECT().DescribeTargetHealthWithContext(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client)
 			}
 			m := &cachedTargetsManager{
 				elbv2Client: elbv2Client,
@@ -1359,6 +1363,7 @@ func Test_cachedTargetsManager_listTargetsFromAWS(t *testing.T) {
 			elbv2Client := services.NewMockELBV2(ctrl)
 			for _, call := range tt.fields.describeTargetHealthWithContextCalls {
 				elbv2Client.EXPECT().DescribeTargetHealthWithContext(gomock.Any(), call.req).Return(call.resp, call.err)
+				elbv2Client.EXPECT().AssumeRole(gomock.Any(), gomock.Any()).Return(elbv2Client)
 			}
 
 			m := &cachedTargetsManager{
