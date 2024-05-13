@@ -206,7 +206,7 @@ type defaultCloud struct {
 }
 
 func (c *defaultCloud) GetAssumedRoleELBV2(assumeRoleArn string, externalId string) services.ELBV2 {
-	c.logger.Info("awsCloud", "method", "GetAssumedRoleELBV2", "assumeRoleArn", assumeRoleArn, "externalId", externalId)
+
 	if assumeRoleArn == "" {
 		return c.elbv2
 	}
@@ -215,7 +215,7 @@ func (c *defaultCloud) GetAssumedRoleELBV2(assumeRoleArn string, externalId stri
 	if exists {
 		return assumedRoleELBV2
 	}
-
+	c.logger.Info("awsCloud", "method", "GetAssumedRoleELBV2", "AssumeRoleArn", assumeRoleArn, "externalId", externalId)
 	creds := stscreds.NewCredentials(c.session, assumeRoleArn, func(p *stscreds.AssumeRoleProvider) {
 		p.ExternalID = &externalId
 	})

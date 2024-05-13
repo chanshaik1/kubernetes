@@ -386,7 +386,26 @@ func (m *defaultResourceManager) registerPodEndpoints(ctx context.Context, tgb *
 	if tgb.Spec.VpcID != "" && tgb.Spec.VpcID != m.vpcID {
 		vpcID = tgb.Spec.VpcID
 		m.logger.Info(fmt.Sprintf(
-			"registering endpoints using the targetGroup's vpcID %s  which is different from the cluster's vpcID %s", tgb.Spec.VpcID, m.vpcID))
+			"registering endpoints using the targetGroup's vpcID %s which is different from the cluster's vpcID %s", tgb.Spec.VpcID, m.vpcID))
+
+		needsToImpersonateRole, _ := GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)
+		if len(needsToImpersonateRole) != 0 {
+			// since we need to impersonate an ARN for this TGB,
+			// it is from a different account
+			// so the packets will need to leave the VPC and therefore
+			// target.AvailabilityZone = awssdk.String("all") must be set
+			// or else nothing will work
+			sdkTargets := make([]elbv2sdk.TargetDescription, 0, len(endpoints))
+			for _, endpoint := range endpoints {
+				target := elbv2sdk.TargetDescription{
+					Id:   awssdk.String(endpoint.IP),
+					Port: awssdk.Int64(endpoint.Port),
+				}
+				target.AvailabilityZone = awssdk.String("all")
+				sdkTargets = append(sdkTargets, target)
+			}
+			return m.targetsManager.RegisterTargets(ctx, tgb, sdkTargets)
+		}
 	}
 	vpcInfo, err := m.vpcInfoProvider.FetchVPCInfo(ctx, vpcID)
 	if err != nil {
