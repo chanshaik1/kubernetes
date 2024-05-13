@@ -19,10 +19,10 @@ const (
 	IndexKeyServiceRefName = "spec.serviceRef.name"
 
 	// Annotation for IAM Role ARN to assume when calling AWS APIs.
-	AnnotationIamRoleArnToAssume = "IamRoleArnToAssume"
+	AnnotationIamRoleArnToAssume = "alb.ingress.kubernetes.io/IamRoleArnToAssume"
 
 	// Annotation for IAM Role External ID to use when calling AWS APIs.
-	AnnotationAssumeRoleExternalId = "AssumeRoleExternalId"
+	AnnotationAssumeRoleExternalId = "alb.ingress.kubernetes.io/AssumeRoleExternalId"
 )
 
 func GetAssumeRoleAndExternalIdFromAnnotations(annotations map[string]string) (string, string) {
