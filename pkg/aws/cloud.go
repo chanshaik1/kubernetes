@@ -105,6 +105,7 @@ func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger l
 		assumeRoleElbV2: make(map[string]services.ELBV2),
 		session:         sess,
 		awsCFG:          awsCFG,
+		logger:          logger,
 	}
 
 	thisObj.elbv2 = services.NewELBV2(sess, thisObj, awsCFG)
@@ -201,6 +202,7 @@ type defaultCloud struct {
 	assumeRoleElbV2 map[string]services.ELBV2
 	session         *session.Session
 	awsCFG          *aws.Config
+	logger          logr.Logger
 }
 
 func (c *defaultCloud) GetAssumedRoleELBV2(assumeRoleArn string, externalId string) services.ELBV2 {
@@ -213,6 +215,7 @@ func (c *defaultCloud) GetAssumedRoleELBV2(assumeRoleArn string, externalId stri
 		return assumedRoleELBV2
 	}
 
+	c.logger.Info("awsCloud", "method", "GetAssumedRoleELBV2", "assumeRoleArn", assumeRoleArn, "externalId", externalId)
 	creds := stscreds.NewCredentials(c.session, assumeRoleArn, func(p *stscreds.AssumeRoleProvider) {
 		p.ExternalID = &externalId
 	})
