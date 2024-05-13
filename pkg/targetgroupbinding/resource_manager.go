@@ -85,13 +85,16 @@ func (m *defaultResourceManager) Reconcile(ctx context.Context, tgb *elbv2api.Ta
 	if tgb.Spec.TargetType == nil {
 		return errors.Errorf("targetType is not specified: %v", k8s.NamespacedName(tgb).String())
 	}
+	AnnotationsToFields(tgb)
 	if *tgb.Spec.TargetType == elbv2api.TargetTypeIP {
+
 		return m.reconcileWithIPTargetType(ctx, tgb)
 	}
 	return m.reconcileWithInstanceTargetType(ctx, tgb)
 }
 
 func (m *defaultResourceManager) Cleanup(ctx context.Context, tgb *elbv2api.TargetGroupBinding) error {
+	AnnotationsToFields(tgb)
 	if err := m.cleanupTargets(ctx, tgb); err != nil {
 		return err
 	}
@@ -388,8 +391,7 @@ func (m *defaultResourceManager) registerPodEndpoints(ctx context.Context, tgb *
 		m.logger.Info(fmt.Sprintf(
 			"registering endpoints using the targetGroup's vpcID %s which is different from the cluster's vpcID %s", tgb.Spec.VpcID, m.vpcID))
 
-		needsToAssumeRole, _ := GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)
-		if len(needsToAssumeRole) != 0 {
+		if tgb.Spec.IamRoleArnToAssume != "" {
 			// since we need to assume a role for this TGB,
 			// it is from a different account
 			// so the packets will need to leave the VPC and therefore

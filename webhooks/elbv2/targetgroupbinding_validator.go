@@ -49,6 +49,7 @@ func (v *targetGroupBindingValidator) Prototype(_ admission.Request) (runtime.Ob
 
 func (v *targetGroupBindingValidator) ValidateCreate(ctx context.Context, obj runtime.Object) error {
 	tgb := obj.(*elbv2api.TargetGroupBinding)
+	targetgroupbinding.AnnotationsToFields(tgb)
 	if err := v.checkRequiredFields(tgb); err != nil {
 		return err
 	}
@@ -70,6 +71,9 @@ func (v *targetGroupBindingValidator) ValidateCreate(ctx context.Context, obj ru
 func (v *targetGroupBindingValidator) ValidateUpdate(ctx context.Context, obj runtime.Object, oldObj runtime.Object) error {
 	tgb := obj.(*elbv2api.TargetGroupBinding)
 	oldTgb := oldObj.(*elbv2api.TargetGroupBinding)
+
+	targetgroupbinding.AnnotationsToFields(tgb)
+
 	if err := v.checkRequiredFields(tgb); err != nil {
 		return err
 	}
@@ -206,7 +210,7 @@ func (v *targetGroupBindingValidator) getTargetGroupFromAWS(ctx context.Context,
 	req := &elbv2sdk.DescribeTargetGroupsInput{
 		TargetGroupArns: awssdk.StringSlice([]string{tgARN}),
 	}
-	tgList, err := v.elbv2Client.AssumeRole(targetgroupbinding.GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)).DescribeTargetGroupsAsList(ctx, req)
+	tgList, err := v.elbv2Client.AssumeRole(tgb.Spec.IamRoleArnToAssume, tgb.Spec.AssumeRoleExternalId).DescribeTargetGroupsAsList(ctx, req)
 	if err != nil {
 		return nil, err
 	}

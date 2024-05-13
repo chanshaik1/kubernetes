@@ -25,22 +25,17 @@ const (
 	AnnotationAssumeRoleExternalId = "alb.ingress.kubernetes.io/AssumeRoleExternalId"
 )
 
-func GetAssumeRoleAndExternalIdFromAnnotations(annotations map[string]string) (string, string) {
-
-	iamRoleArnToAssume := ""
-	externalId := ""
-
-	for key, value := range annotations {
+// AnnotationsToFields converts annotations to fields. Currently it's tgb.Spec.IamRoleArnToAssume and tgb.Spec.AssumeRoleExternalId
+func AnnotationsToFields(tgb *elbv2api.TargetGroupBinding) {
+	for key, value := range tgb.Annotations {
 		if key == AnnotationIamRoleArnToAssume {
-			iamRoleArnToAssume = value
+			tgb.Spec.IamRoleArnToAssume = value
 		} else {
 			if key == AnnotationAssumeRoleExternalId {
-				externalId = value
+				tgb.Spec.AssumeRoleExternalId = value
 			}
 		}
 	}
-
-	return iamRoleArnToAssume, externalId
 }
 
 // BuildTargetHealthPodConditionType constructs the condition type for TargetHealth pod condition.

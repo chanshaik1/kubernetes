@@ -39,6 +39,7 @@ func (m *targetGroupBindingMutator) Prototype(_ admission.Request) (runtime.Obje
 
 func (m *targetGroupBindingMutator) MutateCreate(ctx context.Context, obj runtime.Object) (runtime.Object, error) {
 	tgb := obj.(*elbv2api.TargetGroupBinding)
+	targetgroupbinding.AnnotationsToFields(tgb)
 	if err := m.defaultingTargetType(ctx, tgb); err != nil {
 		return nil, err
 	}
@@ -132,7 +133,7 @@ func (m *targetGroupBindingMutator) getTargetGroupFromAWS(ctx context.Context, t
 	req := &elbv2sdk.DescribeTargetGroupsInput{
 		TargetGroupArns: awssdk.StringSlice([]string{tgARN}),
 	}
-	tgList, err := m.elbv2Client.AssumeRole(targetgroupbinding.GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)).DescribeTargetGroupsAsList(ctx, req)
+	tgList, err := m.elbv2Client.AssumeRole(tgb.Spec.IamRoleArnToAssume, tgb.Spec.AssumeRoleExternalId).DescribeTargetGroupsAsList(ctx, req)
 	if err != nil {
 		return nil, err
 	}
