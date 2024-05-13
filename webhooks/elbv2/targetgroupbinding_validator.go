@@ -13,6 +13,7 @@ import (
 	elbv2api "sigs.k8s.io/aws-load-balancer-controller/apis/elbv2/v1beta1"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/aws/services"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/k8s"
+	"sigs.k8s.io/aws-load-balancer-controller/pkg/targetgroupbinding"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/webhook"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -205,7 +206,7 @@ func (v *targetGroupBindingValidator) getTargetGroupFromAWS(ctx context.Context,
 	req := &elbv2sdk.DescribeTargetGroupsInput{
 		TargetGroupArns: awssdk.StringSlice([]string{tgARN}),
 	}
-	tgList, err := v.elbv2Client.DescribeTargetGroupsAsList(ctx, req)
+	tgList, err := v.elbv2Client.AssumeRole(targetgroupbinding.GetAssumeRoleAndExternalIdFromAnnotations(tgb.Annotations)).DescribeTargetGroupsAsList(ctx, req)
 	if err != nil {
 		return nil, err
 	}
