@@ -27,4 +27,6 @@ type Cloud interface {
 
 	// VpcID for the LoadBalancer resources.
 	VpcID() string
+
+	GetAssumedRoleELBV2(assumeRoleArn string, externalId string) ELBV2
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials/stscreds"
 	"github.com/aws/aws-sdk-go/aws/endpoints"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/ec2"
@@ -100,9 +101,13 @@ func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger l
 		wafRegional: services.NewWAFRegional(sess, cfg.Region),
 		shield:      services.NewShield(sess),
 		rgt:         services.NewRGT(sess),
+
+		assumeRoleElbV2: make(map[string]services.ELBV2),
+		session:         sess,
+		awsCFG:          awsCFG,
 	}
 
-	thisObj.elbv2 = services.NewELBV2(sess, thisObj)
+	thisObj.elbv2 = services.NewELBV2(sess, thisObj, awsCFG)
 
 	return thisObj, nil
 }
@@ -192,6 +197,31 @@ type defaultCloud struct {
 	wafRegional services.WAFRegional
 	shield      services.Shield
 	rgt         services.RGT
+
+	assumeRoleElbV2 map[string]services.ELBV2
+	session         *session.Session
+	awsCFG          *aws.Config
+}
+
+func (c *defaultCloud) GetAssumedRoleELBV2(assumeRoleArn string, externalId string) services.ELBV2 {
+	if assumeRoleArn == "" {
+		return c.elbv2
+	}
+
+	assumedRoleELBV2, exists := c.assumeRoleElbV2[assumeRoleArn]
+	if exists {
+		return assumedRoleELBV2
+	}
+
+	creds := stscreds.NewCredentials(c.session, assumeRoleArn, func(p *stscreds.AssumeRoleProvider) {
+		p.ExternalID = &externalId
+	})
+
+	c.awsCFG.Credentials = creds
+	newObj := services.NewELBV2(c.session, c, c.awsCFG)
+	c.assumeRoleElbV2[assumeRoleArn] = newObj
+
+	return newObj
 }
 
 func (c *defaultCloud) EC2() services.EC2 {
