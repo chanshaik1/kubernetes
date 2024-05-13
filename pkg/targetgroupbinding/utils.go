@@ -2,6 +2,7 @@ package targetgroupbinding
 
 import (
 	"fmt"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	elbv2api "sigs.k8s.io/aws-load-balancer-controller/apis/elbv2/v1beta1"
@@ -16,7 +17,31 @@ const (
 
 	// Index Key for "ServiceReference" index.
 	IndexKeyServiceRefName = "spec.serviceRef.name"
+
+	// Annotation for IAM Role ARN to assume when calling AWS APIs.
+	AnnotationIamRoleArnToImpersonate = "IamRoleArnToImpersonate"
+
+	// Annotation for IAM Role External ID to use when calling AWS APIs.
+	AnnotationAssumeRoleExternalId = "AssumeRoleExternalId"
 )
+
+func GetAssumeRoleAndExternalIdFromAnnotations(annotations map[string]string) (string, string) {
+
+	iamRoleArnToImpersonate := ""
+	externalId := ""
+
+	for key, value := range annotations {
+		switch key {
+		case AnnotationIamRoleArnToImpersonate:
+			iamRoleArnToImpersonate = value
+		case AnnotationAssumeRoleExternalId:
+			externalId = value
+		default:
+		}
+	}
+
+	return iamRoleArnToImpersonate, externalId
+}
 
 // BuildTargetHealthPodConditionType constructs the condition type for TargetHealth pod condition.
 func BuildTargetHealthPodConditionType(tgb *elbv2api.TargetGroupBinding) corev1.PodConditionType {

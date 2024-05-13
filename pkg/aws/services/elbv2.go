@@ -27,6 +27,9 @@ type ELBV2 interface {
 
 	// wrapper to DescribeRulesWithContext API, which aggregates paged results into list.
 	DescribeRulesAsList(ctx context.Context, input *elbv2.DescribeRulesInput) ([]*elbv2.Rule, error)
+
+	// call this method to get an ELBV2 object that has assumed a role.
+	AssumeRole(assumeRoleArn string, externalId string) ELBV2
 }
 
 // NewELBV2 constructs new ELBV2 implementation.
