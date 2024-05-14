@@ -205,6 +205,7 @@ type defaultCloud struct {
 	logger          logr.Logger
 }
 
+// returns ELBV2 client for the given assumeRoleArn, or the default ELBV2 client if assumeRoleArn is empty
 func (c *defaultCloud) GetAssumedRoleELBV2(assumeRoleArn string, externalId string) services.ELBV2 {
 
 	if assumeRoleArn == "" {
