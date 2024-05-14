@@ -110,7 +110,7 @@ func (r *targetGroupBindingReconciler) reconcileTargetGroupBinding(ctx context.C
 		r.eventRecorder.Event(tgb, corev1.EventTypeWarning, k8s.TargetGroupBindingEventReasonFailedAddFinalizer, fmt.Sprintf("Failed add finalizer due to %v", err))
 		return err
 	}
-	r.logger.Info("Reconciling TargetGroupBinding", "name", tgb.Name)
+
 	if err := r.tgbResourceManager.Reconcile(ctx, tgb); err != nil {
 		return err
 	}
