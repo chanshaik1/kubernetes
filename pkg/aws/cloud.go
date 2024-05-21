@@ -21,37 +21,8 @@ import (
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/aws/throttle"
 )
 
-type Cloud interface {
-	// EC2 provides API to AWS EC2
-	EC2() services.EC2
-
-	// ELBV2 provides API to AWS ELBV2
-	ELBV2() services.ELBV2
-
-	// ACM provides API to AWS ACM
-	ACM() services.ACM
-
-	// WAFv2 provides API to AWS WAFv2
-	WAFv2() services.WAFv2
-
-	// WAFRegional provides API to AWS WAFRegional
-	WAFRegional() services.WAFRegional
-
-	// Shield provides API to AWS Shield
-	Shield() services.Shield
-
-	// RGT provides API to AWS RGT
-	RGT() services.RGT
-
-	// Region for the kubernetes cluster
-	Region() string
-
-	// VpcID for the LoadBalancer resources.
-	VpcID() string
-}
-
 // NewCloud constructs new Cloud implementation.
-func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger logr.Logger) (Cloud, error) {
+func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger logr.Logger) (services.Cloud, error) {
 	hasIPv4 := true
 	addrs, err := net.InterfaceAddrs()
 	if err == nil {
@@ -118,17 +89,22 @@ func NewCloud(cfg CloudConfig, metricsRegisterer prometheus.Registerer, logger l
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get VPC ID")
 	}
+
 	cfg.VpcID = vpcID
-	return &defaultCloud{
+
+	thisObj := &defaultCloud{
 		cfg:         cfg,
 		ec2:         ec2Service,
-		elbv2:       services.NewELBV2(sess),
 		acm:         services.NewACM(sess),
 		wafv2:       services.NewWAFv2(sess),
 		wafRegional: services.NewWAFRegional(sess, cfg.Region),
 		shield:      services.NewShield(sess),
 		rgt:         services.NewRGT(sess),
-	}, nil
+	}
+
+	thisObj.elbv2 = services.NewELBV2(sess, thisObj)
+
+	return thisObj, nil
 }
 
 func getVpcID(cfg CloudConfig, ec2Service services.EC2, metadata services.EC2Metadata, logger logr.Logger) (string, error) {
@@ -203,7 +179,7 @@ func inferVPCIDFromTags(ec2Service services.EC2, VpcNameTagKey string, VpcNameTa
 	return *vpcs[0].VpcId, nil
 }
 
-var _ Cloud = &defaultCloud{}
+var _ services.Cloud = &defaultCloud{}
 
 type defaultCloud struct {
 	cfg CloudConfig
