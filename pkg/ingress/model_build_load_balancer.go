@@ -26,7 +26,9 @@ import (
 
 const (
 	resourceIDLoadBalancer         = "LoadBalancer"
+	maximumLoadBalancerNameLength  = 32
 	minimalAvailableIPAddressCount = int64(8)
+	nameRandomLength               = 10
 )
 
 func (t *defaultModelBuildTask) buildLoadBalancer(ctx context.Context, listenPortConfigByPort map[int64]listenPortConfig) (*elbv2model.LoadBalancer, error) {
@@ -88,10 +90,46 @@ func (t *defaultModelBuildTask) buildLoadBalancerSpec(ctx context.Context, liste
 var invalidLoadBalancerNamePattern = regexp.MustCompile("[[:^alnum:]]")
 
 func (t *defaultModelBuildTask) buildLoadBalancerName(_ context.Context, scheme elbv2model.LoadBalancerScheme) (string, error) {
+	explicitName, err := t.parseNameOrNamePrefixFromAnnotation(annotations.IngressSuffixLoadBalancerName, maximumLoadBalancerNameLength)
+
+	if explicitName != "" || err != nil {
+		return explicitName, err
+	}
+
+	prefixName, err := t.parseNameOrNamePrefixFromAnnotation(
+		annotations.IngressSuffixLoadBalancerNamePrefix,
+		maximumLoadBalancerNameLength-nameRandomLength-1, // including the dash
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	uuidHash := sha256.New()
+	_, _ = uuidHash.Write([]byte(t.clusterName))
+	_, _ = uuidHash.Write([]byte(t.ingGroup.ID.String()))
+	_, _ = uuidHash.Write([]byte(scheme))
+	uuid := hex.EncodeToString(uuidHash.Sum(nil))
+
+	if prefixName != "" {
+		return fmt.Sprintf("%v-%.*s", prefixName, nameRandomLength, uuid), nil
+	}
+
+	if t.ingGroup.ID.IsExplicit() {
+		payload := invalidLoadBalancerNamePattern.ReplaceAllString(t.ingGroup.ID.Name, "")
+		return fmt.Sprintf("k8s-%.17s-%.*s", payload, nameRandomLength, uuid), nil
+	}
+
+	sanitizedNamespace := invalidLoadBalancerNamePattern.ReplaceAllString(t.ingGroup.ID.Namespace, "")
+	sanitizedName := invalidLoadBalancerNamePattern.ReplaceAllString(t.ingGroup.ID.Name, "")
+	return fmt.Sprintf("k8s-%.8s-%.8s-%.*s", sanitizedNamespace, sanitizedName, nameRandomLength, uuid), nil
+}
+
+func (t *defaultModelBuildTask) parseNameOrNamePrefixFromAnnotation(annotationName string, maxLength int) (string, error) {
 	explicitNames := sets.String{}
 	for _, member := range t.ingGroup.Members {
 		rawName := ""
-		if exists := t.annotationParser.ParseStringAnnotation(annotations.IngressSuffixLoadBalancerName, &rawName, member.Ing.Annotations); !exists {
+		if exists := t.annotationParser.ParseStringAnnotation(annotationName, &rawName, member.Ing.Annotations); !exists {
 			continue
 		}
 		explicitNames.Insert(rawName)
@@ -99,28 +137,16 @@ func (t *defaultModelBuildTask) buildLoadBalancerName(_ context.Context, scheme 
 	if len(explicitNames) == 1 {
 		name, _ := explicitNames.PopAny()
 		// The name of the loadbalancer can only have up to 32 characters
-		if len(name) > 32 {
-			return "", errors.New("load balancer name cannot be longer than 32 characters")
+		if len(name) > maxLength {
+			return "", errors.Errorf("%v cannot be longer than %v characters", annotationName, maxLength)
 		}
 		return name, nil
 	}
 	if len(explicitNames) > 1 {
-		return "", errors.Errorf("conflicting load balancer name: %v", explicitNames)
-	}
-	uuidHash := sha256.New()
-	_, _ = uuidHash.Write([]byte(t.clusterName))
-	_, _ = uuidHash.Write([]byte(t.ingGroup.ID.String()))
-	_, _ = uuidHash.Write([]byte(scheme))
-	uuid := hex.EncodeToString(uuidHash.Sum(nil))
-
-	if t.ingGroup.ID.IsExplicit() {
-		payload := invalidLoadBalancerNamePattern.ReplaceAllString(t.ingGroup.ID.Name, "")
-		return fmt.Sprintf("k8s-%.17s-%.10s", payload, uuid), nil
+		return "", errors.Errorf("conflicting %v: %v", annotationName, explicitNames)
 	}
 
-	sanitizedNamespace := invalidLoadBalancerNamePattern.ReplaceAllString(t.ingGroup.ID.Namespace, "")
-	sanitizedName := invalidLoadBalancerNamePattern.ReplaceAllString(t.ingGroup.ID.Name, "")
-	return fmt.Sprintf("k8s-%.8s-%.8s-%.10s", sanitizedNamespace, sanitizedName, uuid), nil
+	return "", nil
 }
 
 func (t *defaultModelBuildTask) buildLoadBalancerScheme(_ context.Context) (elbv2model.LoadBalancerScheme, error) {
