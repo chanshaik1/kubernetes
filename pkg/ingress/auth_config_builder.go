@@ -2,8 +2,10 @@ package ingress
 
 import (
 	"context"
+
 	"github.com/pkg/errors"
 	"sigs.k8s.io/aws-load-balancer-controller/pkg/annotations"
+	"sigs.k8s.io/aws-load-balancer-controller/pkg/networking"
 )
 
 const (
@@ -12,6 +14,10 @@ const (
 	defaultAuthSessionCookieName        = "AWSELBAuthSessionCookie"
 	defaultAuthSessionTimeout           = 604800
 	defaultAuthOnUnauthenticatedRequest = "authenticate"
+	issuerKey                           = "issuer"
+	authorizationEndpointKey            = "authorization_endpoint"
+	tokenEndpointKey                    = "token_endpoint"
+	userInfoEndpointKey                 = "userinfo_endpoint"
 )
 
 // Auth config for Service / Ingresses
@@ -113,6 +119,27 @@ func (b *defaultAuthConfigBuilder) buildAuthIDPConfigOIDC(_ context.Context, svc
 	}
 	if !exists {
 		return nil, nil
+	}
+	if authIDP.DiscoveryEndpoint == "" {
+		return &authIDP, nil
+	}
+	oidcConfig, err := networking.GetOIDCConfiguration(authIDP.DiscoveryEndpoint)
+	if err != nil {
+		return nil, err
+	}
+	for key, value := range oidcConfig {
+		switch key {
+		case issuerKey:
+			authIDP.Issuer = value
+		case authorizationEndpointKey:
+			authIDP.AuthorizationEndpoint = value
+		case tokenEndpointKey:
+			authIDP.TokenEndpoint = value
+		case userInfoEndpointKey:
+			authIDP.UserInfoEndpoint = value
+		default:
+			continue
+		}
 	}
 	return &authIDP, nil
 }

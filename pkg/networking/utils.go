@@ -1,9 +1,18 @@
 package networking
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/netip"
+
 	awssdk "github.com/aws/aws-sdk-go/aws"
 	ec2sdk "github.com/aws/aws-sdk-go/service/ec2"
-	"net/netip"
+)
+
+const (
+	OIDCSuffix = ".well-known/openid-configuration"
 )
 
 // ParseCIDRs will parse CIDRs in string format into parsed IPPrefix
@@ -71,4 +80,28 @@ func GetSubnetAssociatedIPv6CIDRs(subnet *ec2sdk.Subnet) ([]netip.Prefix, error)
 		ipv6CIDRs = append(ipv6CIDRs, ipv6CIDR)
 	}
 	return ipv6CIDRs, nil
+}
+
+// GetOIDCConfiguration retrieves the OIDC configuration from the specified discoveryEndpoint.
+func GetOIDCConfiguration(discoveryEndpoint string) (map[string]string, error) {
+	discoveryEndpointUrl := fmt.Sprintf("%s/%s", discoveryEndpoint, OIDCSuffix)
+	req, err := http.NewRequest(http.MethodGet, discoveryEndpointUrl, nil)
+	if err != nil {
+		return nil, err
+	}
+	response, err := http.DefaultClient.Do(req)
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("failed to get OIDC configuration. status code: %d", response.StatusCode)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	var ret map[string]string
+	json.Unmarshal([]byte(body), &ret)
+	return ret, nil
 }
