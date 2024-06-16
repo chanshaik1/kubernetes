@@ -12,7 +12,11 @@ import (
 )
 
 const (
-	OIDCSuffix = ".well-known/openid-configuration"
+	OIDCSuffix               = ".well-known/openid-configuration"
+	issuerKey                = "issuer"
+	authorizationEndpointKey = "authorization_endpoint"
+	tokenEndpointKey         = "token_endpoint"
+	userInfoEndpointKey      = "userinfo_endpoint"
 )
 
 // ParseCIDRs will parse CIDRs in string format into parsed IPPrefix
@@ -83,6 +87,7 @@ func GetSubnetAssociatedIPv6CIDRs(subnet *ec2sdk.Subnet) ([]netip.Prefix, error)
 }
 
 // GetOIDCConfiguration retrieves the OIDC configuration from the specified discoveryEndpoint.
+// should return a map with the following keys: issuer, authorization_endpoint, token_endpoint, userinfo_endpoint
 func GetOIDCConfiguration(discoveryEndpoint string) (map[string]string, error) {
 	discoveryEndpointUrl := fmt.Sprintf("%s/%s", discoveryEndpoint, OIDCSuffix)
 	req, err := http.NewRequest(http.MethodGet, discoveryEndpointUrl, nil)
@@ -93,6 +98,7 @@ func GetOIDCConfiguration(discoveryEndpoint string) (map[string]string, error) {
 	if response.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to get OIDC configuration. status code: %d", response.StatusCode)
 	}
+	defer response.Body.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -103,5 +109,8 @@ func GetOIDCConfiguration(discoveryEndpoint string) (map[string]string, error) {
 	}
 	var ret map[string]string
 	json.Unmarshal([]byte(body), &ret)
+	if ret[issuerKey] == "" || ret[authorizationEndpointKey] == "" || ret[tokenEndpointKey] == "" || ret[userInfoEndpointKey] == "" {
+		return nil, fmt.Errorf("missing OIDC configuration for url: %s", discoveryEndpointUrl)
+	}
 	return ret, nil
 }

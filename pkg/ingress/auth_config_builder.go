@@ -127,20 +127,10 @@ func (b *defaultAuthConfigBuilder) buildAuthIDPConfigOIDC(_ context.Context, svc
 	if err != nil {
 		return nil, err
 	}
-	for key, value := range oidcConfig {
-		switch key {
-		case issuerKey:
-			authIDP.Issuer = value
-		case authorizationEndpointKey:
-			authIDP.AuthorizationEndpoint = value
-		case tokenEndpointKey:
-			authIDP.TokenEndpoint = value
-		case userInfoEndpointKey:
-			authIDP.UserInfoEndpoint = value
-		default:
-			continue
-		}
-	}
+	authIDP.Issuer = oidcConfig[issuerKey]
+	authIDP.AuthorizationEndpoint = oidcConfig[authorizationEndpointKey]
+	authIDP.TokenEndpoint = oidcConfig[tokenEndpointKey]
+	authIDP.UserInfoEndpoint = oidcConfig[userInfoEndpointKey]
 	return &authIDP, nil
 }
 
